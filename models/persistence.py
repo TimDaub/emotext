@@ -18,7 +18,7 @@ class Emotext():
 
     def handle_message(self, message):
         """
-        Entrypoint for emotext, processing data.
+        Entry point for emotext, processing data.
         Handles a single message object and processes the text in it.
         """
         # process text via Message object method that uses tokenization, stemming, punctuation removal and so on...
@@ -44,15 +44,44 @@ class CacheController():
 
     # This class should simply act as a key-value storage cache that can be asked before a word is being processed.
     # If the word is not included in its cache, the word must be processed by traversing conceptnet5's
-    # graphstructure, else we can just use the already given result.
+    # graph structure, else we can just use the already given result.
     # 
     # Since different parameters (which can be found in config.cfg) alter the results immensely,
     # CacheController must be initialized with all those parameters.
     # Also, it is very likely that parameters will increase in later versions, hence naming function parameters
     # might be a good idea for everyone reusing this class.
     
-    def __init__(self, ):
+    def __init__(self, max_depth, min_weight, req_limit):
+        self.max_depth = max_depth
+        self.min_weight = min_weight
+        self.req_limit = req_limit
 
+        # for every form those parameters can take, a new .db file is created on the hard drive.
+        self.cache = shelve.open('./word_cache_%d_%d_%d' % (self.max_depth, self.min_weight, self.req_limit))
+
+    def add_word(self, word, emotions):
+        """
+        Adds an emotion dictionary. 
+
+        This method will overwrite everything.
+        """
+        self.cache[word] = emotions
+
+    def fetch_word(self, word):
+        """
+        Fetches a word and returns None if a KeyValue exception is thrown.
+        """
+        try:
+            return self.cache[word]
+        except:
+            # in case a word is not found in the cache
+            return None
+
+    def __repr__(self):
+        """
+        Simply returns a dictionary as representation of the object
+        """
+        return str(self.__dict__)
 
 class MessageCluster():
     """
@@ -109,7 +138,7 @@ class MessageCluster():
 
     def is_conversation_over(self):
         """
-        Yields wether or not the latest conversation is over.
+        Yields whether or not the latest conversation is over.
         """
         try:
             tolerance_time = self.db['future_time']
