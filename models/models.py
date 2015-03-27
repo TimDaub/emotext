@@ -1,7 +1,36 @@
 import json
 from ..apis.concept_net_client import lookup
+from ..apis.text import build_graph
+from ..apis.text import lang_name_to_code
 from ..utils.utils import extr_from_concept_net_edge
 from datetime import datetime
+from multiprocessing.pool import ThreadPool
+from sets import Set
+
+class Conversation():
+    """
+    A conversation represents a real-world conversation and is essentially
+    a collection of single messages.
+    """
+    def __init__(self, messages):
+        self.messages = messages
+
+        # since converting text to emotion is a slow process,
+        # we launch it as a new thread
+        pool = ThreadPool(processes=1)
+        future_res = pool.apply_async(self.text_to_emotion)
+        self.emotions = future_res.get()
+
+    def text_to_emotion(self):
+        """
+        Essentially submits a list of messages for emotion processing.
+        This method is best used in a thread, as it consumes an awful lot of time.
+        """
+        return [[build_graph(Set([Node(t, lang_name_to_code(m.language), 'c')]), Set([]), {
+            'name': t,
+            'emotions': {}
+            }, 0) for t in m.text] \
+            for m in self.messages]
 
 class Message():
     """

@@ -12,7 +12,6 @@ import sys
 import os.path
 import re
 
-from ..models.models import Node
 from sets import Set
 from math import pow
 
@@ -29,8 +28,8 @@ LANG_TO_CODE = {
     'french': 'fr'
 }
 
-MAX_DEPTH = get_config('emotext_graph_search', 'MAX_DEPTH', 'getint')
-MIN_WEIGHT = get_config('emotext_graph_search', 'MIN_WEIGHT', 'getint')
+MAX_DEPTH = get_config('graph_search', 'MAX_DEPTH', 'getint')
+MIN_WEIGHT = get_config('graph_search', 'MIN_WEIGHT', 'getint')
 
 EMOTIONS = set(["love", "anger", "fear", "hate", "happiness", "pleasant", "sadness", "pity", "shame", "ecstasy", "boredom", "love", "cry", "happy", "jealousy", "joy", "surprise", "regret", "frustration", "sorrow", "melancholy", "awe", "fear", "anger", "joy"])
 
@@ -52,7 +51,7 @@ def lang_name_to_code(lang_name='english'):
         print 'This may be adjusted in apis/emotext.py: LANG_TO_CODE'
         return None
 
-def text_processing(text, remove_punctuation=True, stemming=True, remove_stopwords=True, language='english', replace_with_antonyms='True'):
+def text_processing(text, remove_punctuation=True, stemming=True, remove_stopwords=True, language='english'):
     """
     This function enables general text processing.
     It features:
@@ -133,21 +132,6 @@ def text_processing(text, remove_punctuation=True, stemming=True, remove_stopwor
         sentences = [[w.lower() for w in sentence] for sentence in sentences]
 
     return sentences
-
-def text_to_emotion(token_list, language='english'):
-    """
-    This method takes a list of tokes and analyzes every one of those
-    by using ConceptNet and a specially implemented graph path search algorithm
-
-    It then returns a vector specifying emotional features of the text.
-    """
-    lang_code = lang_name_to_code(language)
-    if len(token_list) < 1: 
-        raise Exception('The token_list must contain at least one word.')
-    return [build_graph(Set([Node(t, lang_code, 'c')]), Set([]), {
-        'name': t,
-        'emotions': {}
-        }, 0) for t in token_list]
 
 def build_graph(token_queue, used_names, emo_vector, depth):
     """
