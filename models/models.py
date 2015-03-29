@@ -1,25 +1,24 @@
 import json
+import shelve
 from ..apis.concept_net_client import lookup
 from ..apis.text import build_graph
 from ..apis.text import lang_name_to_code
 from ..utils.utils import extr_from_concept_net_edge
 from datetime import datetime
-from multiprocessing.pool import ThreadPool
 from sets import Set
+from threading import Thread
 
-class Conversation():
+class Conversation(Thread):
     """
     A conversation represents a real-world conversation and is essentially
     a collection of single messages.
     """
     def __init__(self, messages):
-        self.messages = messages
+        Thread.__init__(self)
+        self.messages = messages        
 
-        # since converting text to emotion is a slow process,
-        # we launch it as a new thread
-        pool = ThreadPool(processes=1)
-        future_res = pool.apply_async(self.text_to_emotion)
-        self.emotions = future_res.get()
+    def run(self):
+        self.emotions = self.text_to_emotion()
 
     def text_to_emotion(self):
         """
@@ -31,6 +30,55 @@ class Conversation():
             'emotions': {}
             }, 0) for t in m.text] \
             for m in self.messages]
+
+class CacheController():
+    """
+    Extracting emotions from text through conceptnet5 can be a very time consuming task,
+    especially when processing large quantities of text.
+
+    The CacheController class therefore can be used to save word-based results persistently.
+    """
+
+    # This class should simply act as a key-value storage cache that can be asked before a word is being processed.
+    # If the word is not included in its cache, the word must be processed by traversing conceptnet5's
+    # graph structure, else we can just use the already given result.
+    # 
+    # Since different parameters (which can be found in config.cfg) alter the results immensely,
+    # CacheController must be initialized with all those parameters.
+    # Also, it is very likely that parameters will increase in later versions, hence naming function parameters
+    # might be a good idea for everyone reusing this class.
+    
+    def __init__(self, max_depth, min_weight, req_limit):
+        self.max_depth = max_depth
+        self.min_weight = min_weight
+        self.req_limit = req_limit
+
+        # for every form those parameters can take, a new .db file is created on the hard drive.
+        self.cache = shelve.open('./word_cache_%d_%d_%d' % (self.max_depth, self.min_weight, self.req_limit))
+
+    def add_word(self, word, emotions):
+        """
+        Adds an emotion dictionary. 
+
+        This method will overwrite everything.
+        """
+        self.cache[word] = emotions
+
+    def fetch_word(self, word):
+        """
+        Fetches a word and returns None if a KeyValue exception is thrown.
+        """
+        try:
+            return self.cache[word]
+        except:
+            # in case a word is not found in the cache
+            return None
+
+    def __repr__(self):
+        """
+        Simply returns a dictionary as representation of the object
+        """
+        return str(self.__dict__)
 
 class Message():
     """
