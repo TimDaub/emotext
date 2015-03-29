@@ -79,7 +79,7 @@ def text_processing(text, remove_punctuation=True, stemming=True, remove_stopwor
     # tokenize always returns a list of strings divided by punctuation characters
     # 
     # 'hello' => [u'hello']
-    # 'hello. world.' => [u'hello.', u'world.']
+    # 'Hello this is doge. world.' => [u'Hello this is doge.', u'world.']
     # 
     # Therefore, we need to continue handling a list, namely the sentences variable
     sentences = sentence_tokenizer.tokenize(text)
