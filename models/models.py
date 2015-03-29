@@ -7,6 +7,11 @@ from ..utils.utils import extr_from_concept_net_edge
 from datetime import datetime
 from sets import Set
 from threading import Thread
+from ..utils.utils import get_config
+
+MAX_DEPTH = get_config('graph_search', 'MAX_DEPTH', 'getint')
+MIN_WEIGHT = get_config('graph_search', 'MIN_WEIGHT', 'getint')
+REQ_LIMIT = get_config('conceptnet5_parameters', 'REQ_LIMIT', 'getint')
 
 class Conversation(Thread):
     """
@@ -23,13 +28,32 @@ class Conversation(Thread):
     def text_to_emotion(self):
         """
         Essentially submits a list of messages for emotion processing.
-        This method is best used in a thread, as it consumes an awful lot of time.
         """
-        return [[build_graph(Set([Node(t, lang_name_to_code(m.language), 'c')]), Set([]), {
-            'name': t,
-            'emotions': {}
-            }, 0) for t in m.text] \
-            for m in self.messages]
+
+        # A conversation consists of an arbitrary number of messages, which contain
+        # an arbitrary number of tokens.
+        # 
+        # Due to the fact that processing text to emotions is a tedious process,
+        # we implemented a Cache Service to enable faster processing of already seen words
+        
+        messages = list(self.messages)
+        cc = CacheController(max_depth=MAX_DEPTH, min_weight=MIN_WEIGHT, req_limit=REQ_LIMIT)
+
+        for m in messages:
+            tokens = list(m.text)
+            for i, t in enumerate(tokens):
+                empty_vector = {
+                    'name': t,
+                    'emotions': {}
+                }
+                pot_t_vector = cc.fetch_word(t)
+                if pot_t_vector is not None:
+                    tokens[i] = pot_t_vector
+                else:
+                    tokens[i] = build_graph(Set([Node(t, lang_name_to_code(m.language), 'c')]), Set([]), empty_vector, 0)
+                    cc.add_word(t['name'], t)
+            m.text = tokens
+        return messages
 
 class CacheController():
     """
