@@ -4,11 +4,13 @@ from ..apis.concept_net_client import lookup
 from ..apis.text import build_graph
 from ..apis.text import lang_name_to_code
 from ..utils.utils import extr_from_concept_net_edge
+from ..apis.text import text_processing
 from datetime import datetime
 from sets import Set
 from threading import Thread
 from ..utils.utils import get_config
 from collections import Counter
+
 
 MAX_DEPTH = get_config('graph_search', 'MAX_DEPTH', 'getint')
 MIN_WEIGHT = get_config('graph_search', 'MIN_WEIGHT', 'getint')
@@ -25,7 +27,7 @@ class Conversation(Thread):
 
     def run(self):
         self.emotions = self.text_to_emotion()
-        self.emotions = self.word_interpolation(self.emotions)
+        self.emotions = self.conv_to_emotion_vectors()
 
     def word_interpolation(self, words):
         """
@@ -41,7 +43,6 @@ class Conversation(Thread):
         # and the last with the first.
         words = list(words.values())
         interpolated_words = list()
-
 
         for i, w in enumerate(words):
             prev_w = words[i-1]
@@ -83,39 +84,12 @@ class Conversation(Thread):
             middle['emotions'][e] = (left_e + middle_e + right_e)/3
         return middle
 
-    def text_to_emotion(self):
+    def conv_to_emotion_vectors(self):
         """
-        Essentially submits a list of messages for emotion processing.
+        Converts a whole conversation and its messages to emotions.
         """
-
-        # A conversation consists of an arbitrary number of messages, which contain
-        # an arbitrary number of tokens.
-        # 
-        # Due to the fact that processing text to emotions is a tedious process,
-        # we implemented a Cache Service to enable faster processing of already seen words
-        
         messages = list(self.messages)
-        cc = CacheController(max_depth=MAX_DEPTH, min_weight=MIN_WEIGHT, req_limit=REQ_LIMIT)
-
-        for m in messages:
-            tokens = list(m.text)
-            # We have to use enumerate here, as a for each loop's reference
-            # would not work appropriately
-            for i, t in enumerate(tokens):
-                empty_vector = {
-                    'name': t,
-                    'emotions': {}
-                }
-
-                # we try to use the cache to find the word's emotions
-                pot_t_vector = cc.fetch_word(t)
-                if pot_t_vector is not None:
-                    tokens[i] = pot_t_vector
-                else:
-                    tokens[i] = build_graph(Set([Node(t, lang_name_to_code(m.language), 'c')]), Set([]), empty_vector, 0)
-                    cc.add_word(t['name'], t)
-            m.text = tokens
-        return messages
+        return [m.to_emotion_vector() for m in messages]
 
 class CacheController():
     """
@@ -146,7 +120,7 @@ class CacheController():
         """
         Adds an emotion dictionary. 
 
-        This method will overwrite everything.
+        This method will overwrite everything of an already given key.
         """
         self.cache[word] = emotions
 
@@ -184,6 +158,45 @@ class Message():
 
     def __setitem__(self, key, value):
         self[key] = value
+
+    def to_emotion_vector(self, cc=CacheController(max_depth=MAX_DEPTH, min_weight=MIN_WEIGHT, req_limit=REQ_LIMIT)):
+        """
+        Converts a message to an emotions-vector.
+        This method can be used in combination with a CacheController, which is set default to emotext's config settings.
+        """
+
+        # A conversation consists of an arbitrary number of messages, which contain
+        # an arbitrary number of tokens.
+        # 
+        # Due to the fact that processing text to emotions is a tedious process,
+        # we implemented a Cache Service to enable faster processing of already seen words
+
+        # Process text via Message object method that uses tokenization, stemming, punctuation removal and so on...
+        tokens = " ".join([" ".join([w for w in s]) \
+            for s in \
+            text_processing(self.text, stemming=False)]) \
+            .split()
+
+        # We have to use enumerate here, as a for each loop's reference
+        # would not work appropriately
+        for i, t in enumerate(tokens):
+            empty_vector = {
+                'name': t,
+                'emotions': {}
+            }
+
+            if cc is not None:
+                # we try to use the cache to find the word's emotions
+                pot_t_vector = cc.fetch_word(t)
+                if pot_t_vector is not None:
+                    tokens[i] = pot_t_vector
+                else:
+                    tokens[i] = build_graph(Set([Node(t, lang_name_to_code(self.language), 'c')]), Set([]), empty_vector, 0)
+                    cc.add_word(tokens[i]['name'], tokens[i])
+            else:
+                tokens[i] = build_graph(Set([Node(t, lang_name_to_code(self.language), 'c')]), Set([]), empty_vector, 0)
+        self.text = tokens
+        return self
 
 class Node():
     def __init__(self, name, lang_code='en', type='c', rel=None, weight=0, edges=[], parent=None):
