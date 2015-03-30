@@ -8,6 +8,7 @@ from datetime import datetime
 from sets import Set
 from threading import Thread
 from ..utils.utils import get_config
+from collections import Counter
 
 MAX_DEPTH = get_config('graph_search', 'MAX_DEPTH', 'getint')
 MIN_WEIGHT = get_config('graph_search', 'MIN_WEIGHT', 'getint')
@@ -24,6 +25,63 @@ class Conversation(Thread):
 
     def run(self):
         self.emotions = self.text_to_emotion()
+        self.emotions = self.word_interpolation(self.emotions)
+
+    def word_interpolation(self, words):
+        """
+        Interpolates a list of words.
+        List must be structurally identical to self.emotions.
+        """
+        # In this word-based interpolation, we simply iterate (enumerate, as we need the index) over our
+        # list and calculate the average of the previous and the next element.
+        # 
+        # A word is a dictionary with a name and a list of emotions.
+        # 
+        # For the sake of simplicity, we interpolate the first element with the last,
+        # and the last with the first.
+        words = list(words.values())
+        interpolated_words = list()
+
+
+        for i, w in enumerate(words):
+            prev_w = words[i-1]
+            if i == len(words)-1:
+                next_w = words[0]
+            else:
+                next_w = words[i+1]
+            if prev_w is not None and next_w is not None:
+                interpolated_w = self.interpolate_e_vector(prev_w, w, next_w)
+                interpolated_words.append(interpolated_w)
+        return interpolated_words
+
+    def interpolate_e_vector(self, left, middle, right):
+        """
+        Interpolates a dictionary emotions-vector with an arbitrary number and
+        form of emotions.
+        """
+
+        # An emotions-vector can have any emotion's name as a key.
+        # If a key exists in for example only two of the passed vectors, we treat it as 0.
+        emotions = Counter(left['emotions'].keys() + middle['emotions'].keys() + right['emotions'].keys()).keys()
+        for e in emotions:
+
+            if e in left['emotions']:
+                left_e = left['emotions'][e]
+            else:
+                left_e = 0
+
+            if e in middle['emotions']:
+                middle_e = middle['emotions'][e]
+            else:
+                middle_e = 0
+
+            if e in right['emotions']:
+                right_e = right['emotions'][e]
+            else:
+                right_e = 0
+
+            middle['emotions'][e] = (left_e + middle_e + right_e)/3
+        return middle
 
     def text_to_emotion(self):
         """
@@ -41,11 +99,15 @@ class Conversation(Thread):
 
         for m in messages:
             tokens = list(m.text)
+            # We have to use enumerate here, as a for each loop's reference
+            # would not work appropriately
             for i, t in enumerate(tokens):
                 empty_vector = {
                     'name': t,
                     'emotions': {}
                 }
+
+                # we try to use the cache to find the word's emotions
                 pot_t_vector = cc.fetch_word(t)
                 if pot_t_vector is not None:
                     tokens[i] = pot_t_vector
