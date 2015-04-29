@@ -11,7 +11,6 @@ from threading import Thread
 from ..utils.utils import get_config
 from collections import Counter
 
-
 MAX_DEPTH = get_config('graph_search', 'MAX_DEPTH', 'getint')
 MIN_WEIGHT = get_config('graph_search', 'MIN_WEIGHT', 'getint')
 REQ_LIMIT = get_config('conceptnet5_parameters', 'REQ_LIMIT', 'getint')

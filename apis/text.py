@@ -31,7 +31,7 @@ LANG_TO_CODE = {
 MAX_DEPTH = get_config('graph_search', 'MAX_DEPTH', 'getint')
 MIN_WEIGHT = get_config('graph_search', 'MIN_WEIGHT', 'getint')
 
-EMOTIONS = set(["love", "anger", "fear", "hate", "happiness", "pleasant", "sadness", "pity", "shame", "ecstasy", "boredom", "love", "cry", "happy", "jealousy", "joy", "surprise", "regret", "frustration", "sorrow", "melancholy", "awe", "fear", "anger", "joy"])
+EMOTIONS = set(get_config('graph_search', 'EMOTIONS', 'getlist'))
 
 def lang_name_to_code(lang_name='english'):
     """
@@ -218,7 +218,7 @@ def calc_nodes_weight(node, emotion, weights, weight_num):
     print node.name + ': %d' % node.weight
     if node.parent == None:
         for i, n in enumerate(weights):
-            weight_num = weight_num + n * 1/(i+1)
+            weight_num = weight_num + n/(i+1 * len(weights))
         print '###########################'
         return weight_num
     else:

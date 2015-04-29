@@ -29,7 +29,12 @@ def get_config(section, key, method_name='get'):
     config_parser = ConfigParser.ConfigParser()
     config_parser.readfp(open(os.path.dirname(os.path.abspath(__file__)) + r'/../config.cfg'))
     try:
-        return getattr(config_parser, method_name)(section, key)
+        if method_name == 'getlist':
+            # split string on comma
+            l = getattr(config_parser, 'get')(section, key).split(',')
+            return l
+        else:
+            return getattr(config_parser, method_name)(section, key)
     except:
         print 'Combination of section and key has not been found in config.cfg file.'
         return None
