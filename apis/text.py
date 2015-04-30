@@ -218,7 +218,7 @@ def calc_nodes_weight(node, emotion, weights, weight_num):
     print node.name + ': %d' % node.weight
     if node.parent == None:
         for i, n in enumerate(weights):
-            weight_num = weight_num + n/(i+1 * len(weights))
+            weight_num = weight_num + n/(i+1 * pow(len(weights), 2))
         print '###########################'
         return weight_num
     else:
