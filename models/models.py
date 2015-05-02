@@ -120,7 +120,7 @@ class CacheController():
 
         This method will overwrite everything of an already given key.
         """
-        word.encode("utf8")
+        word = word.encode("utf8")
         self.cache[word] = emotions
 
     def fetch_word(self, word):
@@ -128,7 +128,7 @@ class CacheController():
         Fetches a word and returns None if a KeyValue exception is thrown.
         """
         try:
-            word.encode("utf8")
+            word = word.encode("utf8")
             return self.cache[word]
         except:
             # in case a word is not found in the cache
