@@ -26,6 +26,7 @@ class Conversation(Thread):
 
     def run(self):
         self.emotions = self.conv_to_emotion_vectors()
+        self.emotions = self.word_interpolation(self.emotions[0].text)
 
     def word_interpolation(self, words):
         """
@@ -39,7 +40,6 @@ class Conversation(Thread):
         # 
         # For the sake of simplicity, we interpolate the first element with the last,
         # and the last with the first.
-        words = list(words.values())
         interpolated_words = list()
 
         for i, w in enumerate(words):
@@ -88,6 +88,9 @@ class Conversation(Thread):
         """
         messages = list(self.messages)
         return [m.to_emotion_vector() for m in messages]
+
+    def __repr__(self):
+        return str(self.__dict__)
 
 class CacheController():
     """
