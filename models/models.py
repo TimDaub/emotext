@@ -25,7 +25,6 @@ class Conversation(Thread):
         self.messages = messages        
 
     def run(self):
-        self.emotions = self.text_to_emotion()
         self.emotions = self.conv_to_emotion_vectors()
 
     def word_interpolation(self, words):
@@ -121,6 +120,7 @@ class CacheController():
 
         This method will overwrite everything of an already given key.
         """
+        word.encode("utf8")
         self.cache[word] = emotions
 
     def fetch_word(self, word):
@@ -128,6 +128,7 @@ class CacheController():
         Fetches a word and returns None if a KeyValue exception is thrown.
         """
         try:
+            word.encode("utf8")
             return self.cache[word]
         except:
             # in case a word is not found in the cache
